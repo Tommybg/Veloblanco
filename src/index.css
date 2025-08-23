@@ -1,0 +1,238 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Veloblanco Dynamic Geometric Design System */
+
+@layer base {
+  :root {
+    /* Core neutrality colors */
+    --background: 0 0% 100%;
+    --foreground: 215 25% 27%;
+
+    /* Enhanced brand colors */
+    --primary: 214 84% 56%; /* Azul confianza */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 220 13% 95%;
+    --secondary-foreground: 215 25% 27%;
+
+    /* Spectrum colors para análisis ideológico */
+    --spectrum-left: 221 83% 53%; /* Azul progresista */
+    --spectrum-center: 215 16% 47%; /* Gris neutral */
+    --spectrum-right: 0 84% 60%; /* Rojo conservador */
+
+    /* Interface elements */
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 27%;
+    
+    --muted: 220 13% 95%;
+    --muted-foreground: 215 16% 47%;
+    
+    --accent: 214 84% 97%;
+    --accent-foreground: 214 84% 56%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 214 84% 56%;
+
+    /* Neutrality indicators */
+    --neutrality-high: 142 71% 45%;
+    --neutrality-medium: 45 93% 47%;
+    --neutrality-low: 0 84% 60%;
+
+    /* Dynamic geometric colors */
+    --geometric-primary: 214 90% 58%;
+    --geometric-secondary: 220 15% 85%;
+    --geometric-accent: 215 25% 35%;
+    --geometric-surface: 220 13% 98%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 215 28% 17%;
+    --foreground: 213 31% 91%;
+    --card: 215 28% 17%;
+    --card-foreground: 213 31% 91%;
+    --primary: 214 84% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 28% 25%;
+    --secondary-foreground: 213 31% 91%;
+    --muted: 215 28% 25%;
+    --muted-foreground: 217 10% 65%;
+    --accent: 215 28% 25%;
+    --accent-foreground: 213 31% 91%;
+    --border: 215 28% 25%;
+    --input: 215 28% 25%;
+    --ring: 214 84% 56%;
+
+    /* Dark mode geometric colors */
+    --geometric-primary: 214 84% 60%;
+    --geometric-secondary: 215 28% 30%;
+    --geometric-accent: 213 31% 85%;
+    --geometric-surface: 215 28% 20%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* Geometric background patterns */
+  .geometric-bg {
+    background-image: 
+      radial-gradient(circle at 20% 80%, hsl(var(--geometric-surface)) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, hsl(var(--accent)) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, hsl(var(--geometric-surface)) 0%, transparent 50%);
+  }
+
+  .geometric-pattern {
+    background-image: 
+      linear-gradient(45deg, transparent 25%, hsl(var(--geometric-surface)) 25%, hsl(var(--geometric-surface)) 50%, transparent 50%, transparent 75%, hsl(var(--geometric-surface)) 75%);
+    background-size: 40px 40px;
+    opacity: 0.3;
+  }
+
+  /* Veloblanco custom utilities */
+  .spectrum-gradient {
+    background: linear-gradient(to right, 
+      hsl(var(--spectrum-left)) 0%, 
+      hsl(var(--spectrum-center)) 50%, 
+      hsl(var(--spectrum-right)) 100%);
+  }
+
+  .neutrality-high {
+    color: hsl(var(--neutrality-high));
+  }
+
+  .neutrality-medium {
+    color: hsl(var(--neutrality-medium));
+  }
+
+  .neutrality-low {
+    color: hsl(var(--neutrality-low));
+  }
+
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-geometric {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(15px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@layer components {
+  /* Enhanced search components */
+  .search-container {
+    @apply relative max-w-2xl mx-auto;
+  }
+
+  .search-input {
+    @apply w-full px-6 py-4 text-lg bg-white/95 backdrop-blur-sm border-2 border-border rounded-2xl shadow-geometric focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 hover:shadow-geometric-hover;
+  }
+
+  .search-button {
+    @apply absolute right-3 top-1/2 transform -translate-y-1/2 bg-primary text-primary-foreground p-3 rounded-xl hover:bg-primary/90 transition-all duration-300 hover:scale-105 hover:animate-depth-shadow;
+  }
+
+  /* Geometric card variants */
+  .source-card {
+    @apply bg-card border border-border rounded-asymmetric p-6 shadow-geometric hover:shadow-geometric-hover transition-all duration-300 hover:-translate-y-1 hover:animate-skew-hover;
+  }
+
+  .summary-card {
+    @apply bg-gradient-to-br from-white via-geometric-surface to-accent/50 border border-border rounded-3xl p-8 shadow-geometric hover:animate-morph-shape;
+  }
+
+  .geometric-card {
+    @apply bg-geometric-surface border border-geometric-secondary rounded-asymmetric p-6 shadow-geometric hover:shadow-geometric-hover transition-all duration-300 hover:animate-skew-hover;
+  }
+
+  /* Enhanced spectrum visualization */
+  .spectrum-bar {
+    @apply h-4 rounded-full spectrum-gradient relative overflow-hidden shadow-inner-geometric;
+  }
+
+  .spectrum-indicator {
+    @apply absolute top-0 w-1 h-full bg-white shadow-md transition-all duration-300 animate-pulse;
+  }
+
+  /* Dynamic perspective tabs */
+  .perspective-tab {
+    @apply px-6 py-3 rounded-skewed font-medium transition-all duration-300 hover:animate-skew-hover;
+  }
+
+  .perspective-tab.active {
+    @apply bg-primary text-primary-foreground shadow-geometric animate-depth-shadow;
+  }
+
+  .perspective-tab.inactive {
+    @apply text-muted-foreground hover:text-foreground hover:bg-muted/50 hover:shadow-inner-geometric;
+  }
+
+  /* Enhanced neutrality indicators */
+  .neutrality-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-asymmetric text-sm font-medium shadow-inner-geometric;
+  }
+
+  .neutrality-badge.high {
+    @apply bg-green-100 text-green-800 hover:animate-pulse;
+  }
+
+  .neutrality-badge.medium {
+    @apply bg-yellow-100 text-yellow-800 hover:animate-pulse;
+  }
+
+  .neutrality-badge.low {
+    @apply bg-red-100 text-red-800 hover:animate-pulse;
+  }
+
+  /* Geometric logo */
+  .geometric-logo {
+    @apply relative overflow-hidden rounded-lg shadow-geometric hover:shadow-geometric-hover transition-all duration-300 hover:animate-geometric-spin;
+  }
+
+  .geometric-logo::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-br from-primary via-geometric-primary to-primary/80 opacity-90;
+  }
+
+  .geometric-logo::after {
+    content: '';
+    @apply absolute top-1/2 left-1/2 w-3 h-3 bg-white rounded-sm transform -translate-x-1/2 -translate-y-1/2 shadow-sm animate-geometric-float;
+  }
+
+  /* Floating geometric elements */
+  .floating-geometric {
+    @apply absolute opacity-20 animate-geometric-float pointer-events-none;
+  }
+
+  .floating-geometric:nth-child(1) { @apply top-10 left-10 w-8 h-8 bg-primary/20 rounded-full; animation-delay: 0s; }
+  .floating-geometric:nth-child(2) { @apply top-1/4 right-20 w-12 h-12 bg-geometric-accent/20 rounded-lg rotate-45; animation-delay: 2s; }
+  .floating-geometric:nth-child(3) { @apply bottom-1/4 left-1/4 w-6 h-6 bg-accent/30 rounded-full; animation-delay: 4s; }
+  .floating-geometric:nth-child(4) { @apply bottom-10 right-10 w-10 h-10 bg-geometric-secondary/30 rounded-asymmetric; animation-delay: 1s; }
+
+  /* Parallax background */
+  .parallax-bg {
+    @apply absolute inset-0 overflow-hidden pointer-events-none;
+  }
+
+  .parallax-bg::before {
+    content: '';
+    @apply absolute w-full h-full bg-gradient-to-r from-transparent via-geometric-surface/10 to-transparent animate-parallax-bg;
+  }
+}

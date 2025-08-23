@@ -1,0 +1,358 @@
+---
+alwaysApply: false
+---
+### Plan: milestones, subtasks, and checklists
+I'll keep this lean, end-to-end, and shippable in slices. We'll mark [x] for what's already done and check off as we implement.
+
+## Milestone 0 — Baseline and environment
+- [x] UI scaffold: `Index`, `TrendingTopics`, `MapaLatam`, `ResultsDashboard`
+- [x] Routing + providers: React Router, React Query, Toasts
+- [x] Supabase MCP server configured in `.cursor/mcp.json`
+- [ ] Create `.env` and wire envs
+  - [ ] `VITE_SUPABASE_URL=https://mglbzrohnrldvgmknnxt.supabase.co`
+  - [ ] `VITE_SUPABASE_ANON_KEY` (get from Supabase dashboard)
+  - [ ] `VITE_MAPBOX_ACCESS_TOKEN` (optional; currently user input UI exists)
+- [ ] Add `src/lib/supabaseClient.ts`
+
+Example:
+```ts
+// src/lib/supabaseClient.ts
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: true, autoRefreshToken: true },
+});
+```
+
+## Milestone 1 — Supabase project + core schema
+- [ ] Create project in Supabase
+- [ ] SQL schema (MVP tables + indexes)
+```sql
+-- topics searched by users (deduped via normalized_query)
+create table public.topics (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  normalized_query text not null,
+  created_at timestamptz not null default now(),
+  unique (normalized_query)
+);
+
+-- search analytics (events)
+create table public.search_events (
+  id bigint primary key generated always as identity,
+  topic_id uuid references public.topics(id) on delete cascade,
+  user_id uuid null, -- supabase auth user
+  query text not null,
+  country text null,
+  category text null,
+  client_id text null, -- anonymous fingerprint
+  created_at timestamptz not null default now()
+);
+create index on public.search_events (created_at desc);
+create index on public.search_events (topic_id);
+
+-- analysis results (cache for a topic)
+create table public.topic_results (
+  id uuid primary key default gen_random_uuid(),
+  topic_id uuid references public.topics(id) on delete cascade,
+  neutrality_score int not null,
+  summary text not null,
+  distribution jsonb not null,     -- {left,center,right}
+  perspectives jsonb not null,     -- {left:{...},center:{...},right:{...}}
+  sources_count int not null default 0,
+  last_refreshed_at timestamptz not null default now(),
+  unique (topic_id)
+);
+
+-- sources and articles (expand later)
+create table public.sources (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  domain text unique,
+  bias text check (bias in ('left','center','right')),
+  credibility_score numeric
+);
+
+create table public.articles (
+  id uuid primary key default gen_random_uuid(),
+  url text unique not null,
+  source_id uuid references public.sources(id),
+  title text,
+  content text,
+  published_at timestamptz,
+  country text,
+  language text,
+  dedup_hash text
+);
+create index on public.articles (published_at desc);
+
+-- trending aggregates (rolling)
+create table public.trending (
+  id bigint primary key generated always as identity,
+  topic_id uuid references public.topics(id),
+  period text not null, -- '24h','7d'
+  country text null,
+  score numeric not null,
+  volume int not null,
+  computed_at timestamptz not null default now()
+);
+create index on public.trending (period, computed_at desc);
+
+-- personalization
+create table public.bookmarks (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  topic_id uuid not null references public.topics(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, topic_id)
+);
+
+create table public.follows (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  topic_id uuid not null references public.topics(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, topic_id)
+);
+
+-- RLS
+alter table public.topic_results enable row level security;
+alter table public.search_events enable row level security;
+alter table public.bookmarks enable row level security;
+alter table public.follows enable row level security;
+
+-- Public read of topic_results; writes only via service (Edge Function/key)
+create policy "public read topic_results"
+on public.topic_results for select
+to anon, authenticated
+using (true);
+
+-- Allow insert of search_events to anyone (anonymous analytics)
+create policy "insert search_events"
+on public.search_events for insert
+to anon, authenticated
+with check (true);
+
+-- Bookmarks/follows per-user
+create policy "select own bookmarks"
+on public.bookmarks for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "manage own bookmarks"
+on public.bookmarks for all
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "select own follows"
+on public.follows for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "manage own follows"
+on public.follows for all
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+```
+
+## Milestone 2 — Search analytics wiring
+- [ ] Add client utilities
+```ts
+// src/services/analytics.ts
+import { supabase } from '@/lib/supabaseClient';
+
+export async function trackSearch(query: string, opts?: { country?: string; category?: string; clientId?: string }) {
+  const normalized = query.trim().toLowerCase();
+  const { data: topic } = await supabase
+    .from('topics')
+    .upsert({ title: query, normalized_query: normalized })
+    .select()
+    .single();
+
+  await supabase.from('search_events').insert({
+    topic_id: topic.id,
+    query,
+    country: opts?.country ?? null,
+    category: opts?.category ?? null,
+    client_id: opts?.clientId ?? null,
+  });
+
+  return topic;
+}
+```
+- [ ] Call `trackSearch` from `SearchHeader` and `ResultsDashboard` when a search happens.
+- [ ] Add React Query mutation wrappers.
+
+## Milestone 3 — Research engine (Firecrawl + AI) via Supabase Edge Functions
+- [ ] Create Edge Function `research` (Node/TS) that:
+  - [ ] Checks cache in `topic_results` (freshness window, e.g., 6–12h)
+  - [ ] If stale/miss: fetch sources with Firecrawl, run AI analysis, compute neutrality and distributions, upsert `topic_results`, enrich `sources`/`articles`
+  - [ ] Returns result and a job status id if doing long-running work
+- [ ] Environment:
+  - [ ] `FIRECRAWL_API_KEY`
+  - [ ] `OPENAI_API_KEY` or preferred LLM key
+- [ ] Optional: Orchestrate multi-source parallelization with Trigger.dev
+
+Example (Edge Function sketch):
+```ts
+// supabase/functions/research/index.ts
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+serve(async (req) => {
+  const { query } = await req.json();
+  const normalized = query.trim().toLowerCase();
+
+  // 1) find topic
+  let { data: topic } = await supabase.from('topics').select('*').eq('normalized_query', normalized).single();
+  if (!topic) {
+    const ins = await supabase.from('topics').insert({ title: query, normalized_query: normalized }).select().single();
+    topic = ins.data;
+  }
+
+  // 2) cache check
+  const { data: cached } = await supabase
+    .from('topic_results')
+    .select('*')
+    .eq('topic_id', topic.id)
+    .gte('last_refreshed_at', new Date(Date.now() - 1000*60*60*6).toISOString())
+    .maybeSingle();
+
+  if (cached) return new Response(JSON.stringify({ topic, result: cached, cached: true }), { headers: { 'content-type': 'application/json' } });
+
+  // 3) scrape with Firecrawl
+  const fireRes = await fetch('https://api.firecrawl.dev/v1/crawl', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${Deno.env.get('FIRECRAWL_API_KEY')}` },
+    body: JSON.stringify({ query, limit: 20, includeContent: true })
+  });
+  const fireData = await fireRes.json();
+
+  // 4) analyze with LLM (stub)
+  const result = await analyzeArticles(fireData.items ?? []);
+
+  // 5) persist
+  const up = await supabase.from('topic_results').upsert({
+    topic_id: topic.id,
+    neutrality_score: result.neutralityScore,
+    summary: result.summary,
+    distribution: result.distribution,
+    perspectives: result.perspectives,
+    sources_count: result.sourcesCount,
+    last_refreshed_at: new Date().toISOString()
+  }).select().single();
+
+  return new Response(JSON.stringify({ topic, result: up.data, cached: false }), { headers: { 'content-type': 'application/json' } });
+});
+
+async function analyzeArticles(items: any[]) {
+  // TODO: call your LLM; return structure below
+  return {
+    neutralityScore: 78,
+    summary: '...',
+    distribution: { left: 35, center: 40, right: 25 },
+    perspectives: {
+      left: { title: '...', summary: '...', keywords: ['...'] },
+      center: { title: '...', summary: '...', keywords: ['...'] },
+      right: { title: '...', summary: '...', keywords: ['...'] },
+    },
+    sourcesCount: items.length,
+  };
+}
+```
+
+- [ ] Client hook:
+```ts
+// src/services/research.ts
+import { supabase } from '@/lib/supabaseClient';
+
+export async function runResearch(query: string) {
+  const res = await fetch('/functions/v1/research', { // Supabase Edge Functions path
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) throw new Error('Research failed');
+  return res.json();
+}
+```
+
+- [ ] Replace mock in `ResultsDashboard` with real data using React Query:
+  - Query key: `['topic-results', query]`
+  - Call `runResearch(query)` on mount
+  - Show staged progress UI while loading (skeletons / progress bar)
+
+## Milestone 4 — Trending computation + realtime
+- [ ] Aggregation job (daily/hourly) to compute `trending` from `search_events` and `topic_results` freshness
+  - [ ] Supabase cron or Trigger.dev scheduled job
+- [ ] Simple algorithm v1:
+  - score = weighted(volume in window) + freshness + result availability
+  - period windows: 24h, 7d
+- [ ] Enable Realtime on `trending` and subscribe in UI
+- [ ] Hook `TrendingGrid` to `trending`
+
+Example subscription:
+```ts
+// subscribeTrending.ts
+import { supabase } from '@/lib/supabaseClient';
+
+export function onTrendingUpdates(cb: () => void) {
+  return supabase
+    .channel('trending')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'trending' }, cb)
+    .subscribe();
+}
+```
+
+## Milestone 5 — UX: progress, share, TL;DR, micro-interactions
+- [ ] Progress indicator in `ResultsDashboard` (staged: “Fetching sources…”, “Analyzing…”, “Summarizing…”)
+- [ ] TL;DR summary block and share button (copy link to `/trending?topic=...` or `/result/:slug`)
+- [ ] Smooth transitions and skeletons in `SourcesList` and `SpectrumVisualization`
+- [ ] Dark/light mode via `next-themes` (already installed)
+
+## Milestone 6 — Accounts, bookmarks, follows, notifications
+- [ ] Enable Supabase Auth (magic link or OAuth)
+- [ ] `bookmarks` and `follows` UI actions on `ResultsDashboard`
+- [ ] Notification preference table or use `follows` as source
+- [ ] Realtime + email/web push (later): notify on result refresh
+
+## Milestone 7 — Trust & transparency
+- [ ] Store source metadata; compute `credibility_score` and show in `SourcesList`
+- [ ] Methodology modal: explain neutrality scoring and bias detection
+- [ ] Feedback table: user reports bias/inaccuracy per topic/article
+
+## Milestone 8 — Map + country feeds
+- [ ] Store per-article `country` and link topics to countries
+- [ ] `CountryPanel` fetches top trending topics and neutrality per country and period
+- [ ] Map UI toggle to fetch dynamic markers by activity
+
+## Milestone 9 — Recommendations and clustering
+- [ ] Similar topics: co-search graph from `search_events` → “People also searched”
+- [ ] Topic clustering: embedding + KMeans stored as cluster_id in `topics`
+- [ ] Personalized timeline: mix of trending + followed topics
+
+### Immediate edits to wire the first slice
+- [ ] Add `src/lib/supabaseClient.ts` (shown above)
+- [ ] Add `src/services/analytics.ts` (shown above)
+- [ ] Update `SearchHeader` to call analytics
+```ts
+// src/components/SearchHeader.tsx (inside handleSearch)
+await trackSearch(searchQuery); // then onSearch(searchQuery)
+```
+- [ ] Create the Edge Function `research` and `src/services/research.ts`
+- [ ] Replace mock analysis in `ResultsDashboard` with data from `runResearch(query)`
+
+### Stretch: Trigger.dev orchestration
+- Parallelize Firecrawl across multiple sources/domains.
+- Add retries and backoff for scraping failures.
+- Publish progress events to Supabase Realtime channel for granular UI progress.
+
+### What you’ll get after Milestones 0–3
+- Real searches tracked, cached topic analyses, and a live dashboard.
+- A trending page with real-time updates.
+- Foundation for bookmarks/follows and notifications.
+
