@@ -1,0 +1,13 @@
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'trigger.config.ts', LF will be replaced by CRLF the next time Git touches it
+package-lock.json
+package.json
+server.js
+src/components/NewsResearchLoading.tsx
+src/components/ResultsDashboard.tsx
+src/components/SourcesList.tsx
+src/trigger/deep-research.ts
+src/trigger/search.ts
+src/types/research.ts
+trigger.config.ts
