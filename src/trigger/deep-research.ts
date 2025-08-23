@@ -1,4 +1,4 @@
-import { batch, logger, schemaTask } from "@trigger.dev/sdk/v3";
+import { batch, logger, metadata, schemaTask } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 import { generateResearchQueries } from "./generate-research-queries";
 import { type SearchResult, search } from "./search";
@@ -16,6 +16,13 @@ export const deepResearch = schemaTask({
   }),
   run: async ({ originalQuery, clarification }, { ctx }) => {
     logger.log("Deep research", { originalQuery, clarification });
+
+    // Step 1: Generate research queries
+    await metadata.set("progress", {
+      step: 0,
+      message: "Generando consultas de investigación...",
+      percentage: 5
+    });
 
     const queriesResult = await generateResearchQueries.triggerAndWait(
       {
@@ -36,7 +43,14 @@ export const deepResearch = schemaTask({
 
     const searchResults: SearchResult[] = [];
 
+    // Step 2: Search iterations
     for (let i = 0; i < MAX_ITERATIONS; i++) {
+      await metadata.set("progress", {
+        step: 1,
+        message: "Buscando fuentes de noticias...",
+        percentage: 10 + (i * 30) // 10-40% for searches
+      });
+
       const _searchResults = await batch.triggerByTaskAndWait<
         (typeof search)[]
       >(
@@ -59,6 +73,12 @@ export const deepResearch = schemaTask({
         nextQueries = [];
         break;
       }
+
+      await metadata.set("progress", {
+        step: 2,
+        message: "Evaluando resultados de búsqueda...",
+        percentage: 40 + (i * 15) // 40-55% for evaluation
+      });
 
       const evaluationResult = await evaluate.triggerAndWait(
         {
@@ -84,12 +104,18 @@ export const deepResearch = schemaTask({
       queries.push(...nextQueries);
     }
 
-    const filteredSearchResultsResult =
+    // Step 3: Filter search results
+    await metadata.set("progress", {
+      step: 2,
+      message: "Procesando y filtrando resultados...",
+      percentage: 60
+    });
+
+      const filteredSearchResultsResult =
       await filterSearchResults.triggerAndWait(
         {
-          searchResults,
           originalQuery,
-          clarification,
+          searchResults,
         },
         {
           tags: ctx.run.tags,
@@ -100,22 +126,24 @@ export const deepResearch = schemaTask({
       throw new Error("Failed to filter search results");
     }
 
-    const filteredSearchResultsIndexes =
-      filteredSearchResultsResult.output.searchResults;
+    // Mapear índices -> objetos completos SearchResult
+    const filteredIndices = filteredSearchResultsResult.output.searchResults as number[];
+    const filteredResults = filteredIndices
+      .map((i) => searchResults[i])
+      .filter((r) => !!r);
 
-    const finalSearchResults: SearchResult[] = [];
-
-    for (let i = 0; i < filteredSearchResultsIndexes.length; i++) {
-      finalSearchResults.push(
-        searchResults[filteredSearchResultsIndexes[i] - 1],
-      );
-    }
+    // Step 4: Generate final answer
+    await metadata.set("progress", {
+      step: 3,
+      message: "Generando respuesta final...",
+      percentage: 80
+    });
 
     const answerResult = await answer.triggerAndWait(
       {
         originalQuery,
         clarification,
-        searchResults: finalSearchResults,
+        searchResults: filteredResults,
       },
       {
         tags: ctx.run.tags,
@@ -123,8 +151,15 @@ export const deepResearch = schemaTask({
     );
 
     if (!answerResult.ok) {
-      throw new Error("Failed to answer");
+      throw new Error("Failed to generate answer");
     }
+
+    // Step 5: Complete
+    await metadata.set("progress", {
+      step: 4,
+      message: "Completado",
+      percentage: 100
+    });
 
     return {
       answer: answerResult.output.answer,
