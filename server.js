@@ -6,6 +6,7 @@ import express from 'express';
 import cors from 'cors';
 import { deepResearch } from './src/trigger/deep-research.ts';
 import { runs } from '@trigger.dev/sdk/v3';
+import { batch, logger, metadata, schemaTask } from "@trigger.dev/sdk/v3";
 
 if (!process.env.TRIGGER_SECRET_KEY) {
   console.error("TRIGGER_SECRET_KEY is missing");
@@ -23,6 +24,120 @@ app.use(cors({
 app.use(express.json());
 
 // Deep Research API endpoint
+app.post('/api/deep-research-start', async (req, res) => {
+  try {
+    const { query, clarification } = req.body;
+    
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({
+        status: 'failed',
+        error: 'Invalid request: query is required'
+      });
+    }
+    
+    console.log('Server: Starting deep research workflow for:', query);
+    
+    const handle = await deepResearch.trigger(
+      {
+        originalQuery: query,
+        clarification,
+      },
+      {
+        // Auto-generate a scoped public token for this run
+        publicTokenOptions: {
+          scopes: {
+            read: {
+              runs: true, // scope to this run only
+            },
+          },
+          expirationTime: '1h',
+        },
+      }
+    );
+    
+    res.json({
+      status: 'started',
+      runId: handle.id,
+      publicAccessToken: handle.publicAccessToken,
+    });
+    
+  } catch (error) {
+    console.error('Server: Failed to start deep research:', error);
+    res.status(500).json({
+      status: 'failed',
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    });
+  }
+});
+
+// New SSE endpoint for real-time progress with metadata
+app.get('/api/deep-research-stream/:runId', async (req, res) => {
+  const { runId } = req.params;
+  
+  // Set up SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control'
+  });
+
+  const sendProgress = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    let runResult = await runs.retrieve(runId);
+    
+    // Send initial progress
+    sendProgress({
+      type: 'progress',
+      step: 0,
+      message: 'Iniciando investigación...',
+      percentage: 0,
+      status: runResult.status
+    });
+
+    while (runResult.status !== 'COMPLETED' && runResult.status !== 'FAILED') {
+      await new Promise((r) => setTimeout(r, 1000)); // Check every second
+      runResult = await runs.retrieve(runId);
+      
+      // Check for metadata updates
+      if (runResult.metadata && runResult.metadata.progress) {
+        const progress = runResult.metadata.progress;
+        sendProgress({
+          type: 'progress',
+          step: progress.step,
+          message: progress.message,
+          percentage: progress.percentage,
+          status: runResult.status
+        });
+      }
+    }
+
+    if (runResult.status === 'COMPLETED') {
+      sendProgress({
+        type: 'complete',
+        data: parseAnswerForDashboard(runResult.output.answer, 0)
+      });
+    } else {
+      sendProgress({
+        type: 'error',
+        error: runResult?.error?.message || 'Workflow failed'
+      });
+    }
+  } catch (error) {
+    sendProgress({
+      type: 'error',
+      error: error.message
+    });
+  } finally {
+    res.end();
+  }
+});
+
+// Original Deep Research API endpoint (legacy support)
 app.post('/api/deep-research', async (req, res) => {
   const startTime = Date.now();
   
@@ -101,6 +216,22 @@ app.post('/api/deep-research', async (req, res) => {
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Retrieve run result by runId (for completion fetch)
+app.get('/api/deep-research-result/:runId', async (req, res) => {
+  try {
+    const { runId } = req.params;
+    if (!runId) return res.status(400).json({ error: 'runId is required' });
+    const runResult = await runs.retrieve(runId);
+    if (runResult.status !== 'COMPLETED') {
+      return res.status(202).json({ status: runResult.status });
+    }
+    const dashboardData = parseAnswerForDashboard(runResult.output.answer, 0);
+    res.json({ status: 'completed', data: dashboardData });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+  }
 });
 
 // Start server
