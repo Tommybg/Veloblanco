@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "build:server": "npm run build && cp server.prod.js dist/",
-    "start": "node dist/server.prod.js",
+    "build:server": "npm run build && cp server.js dist/",
+    "start": "node dist/server.js",
     "dev": "vite",
     "server": "node --env-file=.env --import tsx server.js",
     "trigger:dev": "cross-env CI= npx trigger.dev@4.0.1 dev"
