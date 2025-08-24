@@ -7,13 +7,34 @@ import DisplayCards from '@/components/ui/display-cards';
 import { Search, FileText, BarChart3, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DeepResearchResponse } from '@/types/research';
-import { triggerDeepResearch, healthCheck } from '@/api/deep-research';
+import { triggerDeepResearch, healthCheck, startResearchRun, fetchDeepResearchResult } from '@/api/deep-research';
+import { useRealtimeRun } from '@trigger.dev/react-hooks';
+
+
+function RealtimeRunSubscriber({
+  runId,
+  accessToken,
+  onProgress,
+}: {
+  runId: string;
+  accessToken: string;
+  onProgress: (p: { percentage?: number; step?: number; message?: string }) => void;
+}) {
+  const { run, error } = useRealtimeRun(runId, { accessToken });
+  useEffect(() => {
+    if (!run) return;
+    const meta: any = (run as any).metadata;
+    if (meta?.progress) onProgress(meta.progress);
+  }, [run, onProgress]);
+  if (error) console.error('realtime error', error);
+  return null;
+}
+
 
 interface LoadingStep {
   id: string;
   label: string;
   icon: React.ReactNode;
-  duration: number;
 }
 
 interface NewsResearchLoadingProps {
@@ -34,67 +55,144 @@ const NewsResearchLoading: React.FC<NewsResearchLoadingProps> = ({
   const [researchResults, setResearchResults] = useState<DeepResearchResponse['data'] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isActuallyLoading, setIsActuallyLoading] = useState(false);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [publicToken, setPublicToken] = useState<string | null>(null);
+  const [currentMessage, setCurrentMessage] = useState<string>("");
   const navigate = useNavigate();
 
   const loadingSteps: LoadingStep[] = [
     {
       id: 'searching',
       label: 'Buscando fuentes de noticias...',
-      icon: <Search className="w-4 h-4" />,
-      duration: 2000
+      icon: <Search className="w-4 h-4" />
     },
     {
-      id: 'analyzing',
+      id: 'analyzing', 
       label: 'Analizando contenido...',
-      icon: <FileText className="w-4 h-4" />,
-      duration: 3000
+      icon: <FileText className="w-4 h-4" />
     },
     {
       id: 'processing',
       label: 'Procesando información...',
-      icon: <BarChart3 className="w-4 h-4" />,
-      duration: 2500
+      icon: <BarChart3 className="w-4 h-4" />
     },
     {
       id: 'generating',
       label: 'Generando resultados...',
-      icon: <CheckCircle className="w-4 h-4" />,
-      duration: 1500
+      icon: <CheckCircle className="w-4 h-4" />
     }
   ];
+
+  // Estimated duration for each step (in milliseconds)
+  const stepDurations = [8000, 12000, 10000, 8000]; // Total ~38 seconds estimated
+  const totalEstimatedDuration = stepDurations.reduce((acc, dur) => acc + dur, 0);
+
+  const startProgressTracking = () => {
+    const start = Date.now();
+    setStartTime(start);
+
+    const updateProgress = () => {
+      const elapsed = Date.now() - start;
+      const estimatedProgress = Math.min(95, (elapsed / totalEstimatedDuration) * 100);
+      
+      // Determine current step based on elapsed time
+      let cumulativeTime = 0;
+      let newStep = stepDurations.length; // Default to final step if past all durations
+      
+      for (let i = 0; i < stepDurations.length; i++) {
+        cumulativeTime += stepDurations[i];
+        if (elapsed < cumulativeTime) {
+          newStep = i;
+          break;
+        }
+      }
+      
+      // Update UI
+      setProgress(estimatedProgress);
+      
+      if (newStep !== currentStep) {
+        setCurrentStep(newStep);
+        // Only add valid step indices to visible cards
+        if (newStep < stepDurations.length) {
+          setVisibleCards(prev => {
+            const newVisible = Array.from(new Set([...prev, newStep]));
+            return newVisible.sort((a, b) => a - b);
+          });
+        } else {
+          // If we're past all steps, show all cards
+          setVisibleCards([0, 1, 2, 3]);
+        }
+      }
+    };
+
+    // Update progress every 200ms for smooth animation
+    const progressInterval = setInterval(updateProgress, 200);
+    
+    return () => clearInterval(progressInterval);
+  };
 
   const startDeepResearch = async () => {
     setIsActuallyLoading(true);
     setError(null);
+    
+    // If we will use realtime, don't start simulated progress
+    let stopProgressTracking: (() => void) | null = null;
+    
     try {
-      console.log('Starting deep research for query:', query);
+      console.log('Starting time-based deep research for query:', query);
       const serverOk = await healthCheck();
       if (!serverOk) {
         throw new Error('API server is not running at /api/health');
       }
-      const result: DeepResearchResponse = await triggerDeepResearch(String(query));
+      // Start the run to get a runId for realtime hooks
+      const started = await startResearchRun(String(query));
+      setRunId(started.runId);
+      if (started.publicAccessToken) setPublicToken(started.publicAccessToken);
       
-      if (result.status === 'completed' && result.data) {
+      // Fallback: if no realtime run yet, start simulated progress until first hook tick
+      stopProgressTracking = startProgressTracking();
+      
+      // Poll final result endpoint (frontend-side) while UI shows realtime progress
+      let result: any;
+      const pollStart = Date.now();
+      const timeoutMs = 10 * 60 * 1000; // 10 minutes
+      const intervalMs = 1500;
+      while (true) {
+        result = await fetchDeepResearchResult(started.runId);
+        if (result?.status === 'completed' && result?.data) break;
+        if (result?.status === 'FAILED' || result?.error) throw new Error(result?.error || 'Run failed');
+        if (Date.now() - pollStart > timeoutMs) throw new Error('Run timed out');
+        await new Promise((r) => setTimeout(r, intervalMs));
+      }
+
+      // Stop simulated progress when server returns completion
+      if (stopProgressTracking) stopProgressTracking();
+
+      if (result.data) {
         console.log('Deep research completed successfully');
-        console.log('Server response data:', result.data);
-        console.log('sourcesWithBias in response:', result.data.sourcesWithBias?.length || 0);
-        setResearchResults(result.data);
+        setResearchResults(result.data as DeepResearchResponse['data']);
         setIsComplete(true);
         setProgress(100);
+        setCurrentStep(loadingSteps.length);
         setIsActuallyLoading(false);
+        
+        // Show all cards as complete
+        setVisibleCards([0, 1, 2, 3]);
         
         // Redirect to results dashboard
         setTimeout(() => {
           navigate('/results', { 
             state: { results: result.data, query } 
           });
-        }, 1000);
+        }, 1500);
       } else {
         console.error('Deep research failed:', result.error);
         setError(result.error || 'Unknown error occurred');
         setIsActuallyLoading(false);
       }
     } catch (err) {
+      if (stopProgressTracking) stopProgressTracking();
       console.error('Deep research API error:', err);
       setError(err instanceof Error ? err.message : 'Failed to complete research. Make sure the server is running on http://localhost:3001');
       setIsActuallyLoading(false);
@@ -107,53 +205,7 @@ const NewsResearchLoading: React.FC<NewsResearchLoadingProps> = ({
     }
   }, [autoStart, query]);
 
-  useEffect(() => {
-    // Only run the simulated animation if we're not actually loading
-    if (!autoStart || isActuallyLoading) return;
-
-    let progressInterval: ReturnType<typeof setInterval>;
-    let stepTimeout: ReturnType<typeof setTimeout>;
-
-    const startStep = (stepIndex: number) => {
-      if (stepIndex >= loadingSteps.length) {
-        setIsComplete(true);
-        setProgress(100);
-        setTimeout(() => onComplete(), 500);
-        return;
-      }
-
-      setCurrentStep(stepIndex);
-      setVisibleCards(prev => [...prev, stepIndex]);
-      
-      const step = loadingSteps[stepIndex];
-      const stepProgress = (stepIndex / loadingSteps.length) * 100;
-      const nextStepProgress = ((stepIndex + 1) / loadingSteps.length) * 100;
-
-      let currentProgress = stepProgress;
-      setProgress(currentProgress);
-
-      progressInterval = setInterval(() => {
-        currentProgress += (nextStepProgress - stepProgress) / (step.duration / 50);
-        if (currentProgress >= nextStepProgress) {
-          currentProgress = nextStepProgress;
-          clearInterval(progressInterval);
-        }
-        setProgress(currentProgress);
-      }, 50);
-
-      stepTimeout = setTimeout(() => {
-        clearInterval(progressInterval);
-        startStep(stepIndex + 1);
-      }, step.duration);
-    };
-
-    startStep(0);
-
-    return () => {
-      clearInterval(progressInterval);
-      clearTimeout(stepTimeout);
-    };
-  }, [autoStart, onComplete, isActuallyLoading]);
+  // Realtime subscriber is rendered only when runId + publicToken exist
 
   const getCardClassName = (index: number) => {
     const isVisible = visibleCards.includes(index);
@@ -266,16 +318,27 @@ const NewsResearchLoading: React.FC<NewsResearchLoadingProps> = ({
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-accent/30 p-4">
       <div className="w-full max-w-4xl space-y-8">
+        {runId && publicToken && (
+          <RealtimeRunSubscriber
+            runId={runId}
+            accessToken={publicToken}
+            onProgress={({ percentage, step, message }) => {
+              if (typeof percentage === 'number') setProgress(percentage);
+              if (typeof step === 'number') {
+                setCurrentStep(step);
+                setVisibleCards((prev) => (prev.includes(step) ? prev : [...prev, step].sort((a, b) => a - b)));
+              }
+              if (message) setCurrentMessage(message);
+            }}
+          />
+        )}
         {/* Header */}
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-bold text-foreground">
             Analizando "{query}"
           </h1>
           <p className="text-muted-foreground">
-            {isActuallyLoading 
-              ? "Ejecutando investigación profunda con IA..." 
-              : "Estamos procesando múltiples fuentes para darte una visión completa y balanceada"
-            }
+            Ejecutando investigación profunda con IA basada en tiempo real...
           </p>
         </div>
 
@@ -302,10 +365,10 @@ const NewsResearchLoading: React.FC<NewsResearchLoadingProps> = ({
         <div className="text-center">
           <Badge variant="secondary" className="text-sm px-4 py-2">
             <Clock className="w-4 h-4 mr-2" />
-            {isActuallyLoading 
-              ? "Ejecutando workflow de investigación..." 
-              : currentStep < loadingSteps.length 
-                ? loadingSteps[currentStep].label 
+            {isActuallyLoading
+              ? (currentMessage || (currentStep < loadingSteps.length ? loadingSteps[currentStep].label : "Ejecutando workflow de investigación..."))
+              : currentStep < loadingSteps.length
+                ? loadingSteps[currentStep].label
                 : "Completado"
             }
           </Badge>
