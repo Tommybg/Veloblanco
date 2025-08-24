@@ -1,6 +1,6 @@
 # 🚀 Veloblanco - Análisis de Noticias con IA
 
-[![Veloblanco Demo](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=VIDEO_ID)
+[![Veloblanco Demo](https://www.youtube.com/watch?v=wkGP2IotA-E/.jpg)](https://www.youtube.com/watch?v=wkGP2IotA-E)
 
 ## 🎯 **Objetivo del Producto**
 
