@@ -4,8 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "build": "vite build",
     "server": "node --env-file=.env --import tsx server.js",
     "dev": "vite",
+    "start": "node dist/server.prod.js",
     "trigger:dev": "cross-env CI= npx trigger.dev@4.0.1 dev",
     "bias:start": "node scripts/start-bias-service.js",
     "dev:full": "concurrently \"npm run server\" \"npm run dev\" \"npm run trigger:dev\"",
