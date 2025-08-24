@@ -140,6 +140,15 @@ Using ONLY the provided sources, produce a comprehensive analysis following thes
 \`\`\`
     *Figure X: Caption...[citation] (MUST be put below the figure and separated by a blank line)*
     
+    ## 360° Comparative Analysis
+    This section provides the ideological spectrum breakdown for the dashboard's comparative view.
+
+    **Left Perspective**: [Detailed analysis of progressive/liberal viewpoints found in the sources, including specific arguments, evidence, and policy positions. Cite relevant sources [X]. Focus on social justice themes, government intervention advocacy, and progressive reforms.]
+
+    **Center Perspective**: [Detailed analysis of balanced, evidence-based approaches found in the sources. Cite relevant sources [X]. Focus on pragmatic solutions, moderate positions, and fact-based analysis that avoids strong ideological positioning.]
+
+    **Right Perspective**: [Detailed analysis of conservative/traditional viewpoints found in the sources. Cite relevant sources [X]. Focus on market-based solutions, traditional values, limited government approaches, and conservative policy positions.]
+
     ## Conclusion
     [Synthesized takeaways...] [5][6]
     [Explicit limitations discussion...]

@@ -57,36 +57,48 @@ const PerspectiveTabs = ({
 
       {/* Contenido de la perspectiva seleccionada */}
       <div className="animate-fade-in">
-        <h4 className="text-lg font-semibold text-foreground mb-4">
-          {currentPerspective.title}
-        </h4>
-        
-        <p className="text-foreground leading-relaxed mb-6">
-          {currentPerspective.summary}
-        </p>
+        {currentPerspective ? (
+          <>
+            <h4 className="text-lg font-semibold text-foreground mb-4">
+              {currentPerspective.title}
+            </h4>
+            
+            <p className="text-foreground leading-relaxed mb-6">
+              {currentPerspective.summary}
+            </p>
+          </>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">
+              No se encontró información para la perspectiva {selectedPerspective}.
+            </p>
+          </div>
+        )}
 
         {/* Keywords destacadas */}
-        <div>
-          <h5 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-            Palabras clave características
-          </h5>
-          <div className="flex flex-wrap gap-2">
-            {currentPerspective.keywords.map((keyword, index) => (
-              <span
-                key={index}
-                className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
-                  selectedPerspective === 'left' 
-                    ? 'bg-spectrum-left/10 text-spectrum-left border-spectrum-left/20'
-                    : selectedPerspective === 'center'
-                    ? 'bg-spectrum-center/10 text-spectrum-center border-spectrum-center/20'
-                    : 'bg-spectrum-right/10 text-spectrum-right border-spectrum-right/20'
-                }`}
-              >
-                {keyword}
-              </span>
-            ))}
+        {currentPerspective && currentPerspective.keywords && currentPerspective.keywords.length > 0 && (
+          <div>
+            <h5 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
+              Palabras clave características
+            </h5>
+            <div className="flex flex-wrap gap-2">
+              {currentPerspective.keywords.map((keyword, index) => (
+                <span
+                  key={index}
+                  className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                    selectedPerspective === 'left' 
+                      ? 'bg-spectrum-left/10 text-spectrum-left border-spectrum-left/20'
+                      : selectedPerspective === 'center'
+                      ? 'bg-spectrum-center/10 text-spectrum-center border-spectrum-center/20'
+                      : 'bg-spectrum-right/10 text-spectrum-right border-spectrum-right/20'
+                  }`}
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

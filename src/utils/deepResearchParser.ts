@@ -154,12 +154,12 @@ export function parseDeepResearchResponse(answer: string): ParsedDeepResearch {
       // LEFT PERSPECTIVE - try multiple patterns
       let leftSummary = '';
       const leftPatterns = [
-        /\*\*Left Perspective\*\*:\s*([\s\S]*?)(?=\*\*Center Perspective\*\*|\*\*Right Perspective\*\*|$)/i,
-        /Left Perspective:\s*([\s\S]*?)(?=Center Perspective:|Right Perspective:|$)/i,
-        /Left:\s*([\s\S]*?)(?=Center:|Right:|$)/i,
-        /Progresista:\s*([\s\S]*?)(?=Neutral:|Conservador:|$)/i,
-        /Progressive:\s*([\s\S]*?)(?=Neutral:|Conservative:|$)/i,
-        /Izquierda:\s*([\s\S]*?)(?=Centro:|Derecha:|$)/i
+        /\*\*Left Perspective\*\*:\s*([\s\S]*?)(?=\*\*Center Perspective\*\*|\*\*Right Perspective\*\*|\n\n## |$)/i,
+        /Left Perspective:\s*([\s\S]*?)(?=Center Perspective:|Right Perspective:|\n\n## |$)/i,
+        /Left:\s*([\s\S]*?)(?=Center:|Right:|\n\n## |$)/i,
+        /Progresista:\s*([\s\S]*?)(?=Neutral:|Conservador:|\n\n## |$)/i,
+        /Progressive:\s*([\s\S]*?)(?=Neutral:|Conservative:|\n\n## |$)/i,
+        /Izquierda:\s*([\s\S]*?)(?=Centro:|Derecha:|\n\n## |$)/i
       ];
       
       for (const pattern of leftPatterns) {
@@ -182,12 +182,12 @@ export function parseDeepResearchResponse(answer: string): ParsedDeepResearch {
       // CENTER PERSPECTIVE - try multiple patterns
       let centerSummary = '';
       const centerPatterns = [
-        /\*\*Center Perspective\*\*:\s*([\s\S]*?)(?=\*\*Left Perspective\*\*|\*\*Right Perspective\*\*|$)/i,
-        /Center Perspective:\s*([\s\S]*?)(?=Left Perspective:|Right Perspective:|$)/i,
-        /Center:\s*([\s\S]*?)(?=Left:|Right:|$)/i,
-        /Neutral:\s*([\s\S]*?)(?=Progresista:|Conservador:|$)/i,
-        /Neutral:\s*([\s\S]*?)(?=Progressive:|Conservative:|$)/i,
-        /Centro:\s*([\s\S]*?)(?=Izquierda:|Derecha:|$)/i
+        /\*\*Center Perspective\*\*:\s*([\s\S]*?)(?=\*\*Left Perspective\*\*|\*\*Right Perspective\*\*|\n\n## |$)/i,
+        /Center Perspective:\s*([\s\S]*?)(?=Left Perspective:|Right Perspective:|\n\n## |$)/i,
+        /Center:\s*([\s\S]*?)(?=Left:|Right:|\n\n## |$)/i,
+        /Neutral:\s*([\s\S]*?)(?=Progresista:|Conservador:|\n\n## |$)/i,
+        /Neutral:\s*([\s\S]*?)(?=Progressive:|Conservative:|\n\n## |$)/i,
+        /Centro:\s*([\s\S]*?)(?=Izquierda:|Derecha:|\n\n## |$)/i
       ];
       
       for (const pattern of centerPatterns) {
@@ -210,12 +210,12 @@ export function parseDeepResearchResponse(answer: string): ParsedDeepResearch {
       // RIGHT PERSPECTIVE - try multiple patterns
       let rightSummary = '';
       const rightPatterns = [
-        /\*\*Right Perspective\*\*:\s*([\s\S]*?)(?=\*\*Left Perspective\*\*|\*\*Center Perspective\*\*|$)/i,
-        /Right Perspective:\s*([\s\S]*?)(?=Left Perspective:|Center Perspective:|$)/i,
-        /Right:\s*([\s\S]*?)(?=Left:|Center:|$)/i,
-        /Conservador:\s*([\s\S]*?)(?=Progresista:|Neutral:|$)/i,
-        /Conservative:\s*([\s\S]*?)(?=Progressive:|Neutral:|$)/i,
-        /Derecha:\s*([\s\S]*?)(?=Izquierda:|Centro:|$)/i
+        /\*\*Right Perspective\*\*:\s*([\s\S]*?)(?=\*\*Left Perspective\*\*|\*\*Center Perspective\*\*|\n\n## |$)/i,
+        /Right Perspective:\s*([\s\S]*?)(?=Left Perspective:|Center Perspective:|\n\n## |$)/i,
+        /Right:\s*([\s\S]*?)(?=Left:|Center:|\n\n## |$)/i,
+        /Conservador:\s*([\s\S]*?)(?=Progresista:|Neutral:|\n\n## |$)/i,
+        /Conservative:\s*([\s\S]*?)(?=Progressive:|Neutral:|\n\n## |$)/i,
+        /Derecha:\s*([\s\S]*?)(?=Izquierda:|Centro:|\n\n## |$)/i
       ];
       
       for (const pattern of rightPatterns) {
