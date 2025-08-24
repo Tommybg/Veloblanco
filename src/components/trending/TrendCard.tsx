@@ -2,6 +2,7 @@
 import React from 'react';
 import { TrendingUp, Clock, Users, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface TrendCardProps {
   topic: {
@@ -16,11 +17,34 @@ interface TrendCardProps {
     description: string;
     keywords: string[];
     spectrum: { left: number; center: number; right: number };
+    slug?: string; // Campo opcional para navegación
   };
   rank: number;
 }
 
 const TrendCard = ({ topic, rank }: TrendCardProps) => {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (topic.slug) {
+      // Navegar al Results Dashboard con el trending topic
+      navigate(`/trending-result/${topic.slug}`, {
+        state: { 
+          trendingTopic: topic,
+          fromTrending: true 
+        }
+      });
+    } else {
+      // Fallback: navegar con el ID si no hay slug
+      navigate(`/trending-result/${topic.id}`, {
+        state: { 
+          trendingTopic: topic,
+          fromTrending: true 
+        }
+      });
+    }
+  };
+
   const getCategoryColor = (category: string) => {
     const colors = {
       'Política': 'bg-red-100 text-red-800',
@@ -40,7 +64,7 @@ const TrendCard = ({ topic, rank }: TrendCardProps) => {
   };
 
   return (
-    <div className="source-card group cursor-pointer">
+    <div className="source-card group cursor-pointer" onClick={handleClick}>
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">

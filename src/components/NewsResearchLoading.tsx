@@ -7,7 +7,7 @@ import DisplayCards from '@/components/ui/display-cards';
 import { Search, FileText, BarChart3, CheckCircle, Clock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DeepResearchResponse } from '@/types/research';
-import { triggerDeepResearch, healthCheck, startResearchRun, fetchDeepResearchResult } from '@/api/deep-research';
+import { healthCheck, startResearchRun, fetchDeepResearchResult } from '@/api/deep-research';
 import { useRealtimeRun } from '@trigger.dev/react-hooks';
 import { parseDeepResearchResponse } from '@/utils/deepResearchParser';
 import { Markdown } from '@/components/ui/markdown';
@@ -62,13 +62,11 @@ interface LoadingStep {
 
 interface NewsResearchLoadingProps {
   onComplete?: () => void;
-  autoStart?: boolean;
   query?: string;
 }
 
 const NewsResearchLoading: React.FC<NewsResearchLoadingProps> = ({
   onComplete = () => {},
-  autoStart = true,
   query = "tu búsqueda"
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -208,18 +206,18 @@ const NewsResearchLoading: React.FC<NewsResearchLoadingProps> = ({
       
     } catch (err) {
       console.error('❌ Deep research error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to complete research');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to complete research';
+      setError(errorMessage);
       setIsActuallyLoading(false);
     }
   };
 
-  // useEffect para auto-start
+  // Iniciar búsqueda cuando el componente se monta
   useEffect(() => {
-    if (autoStart && query && query.trim() !== "" && query !== "tu búsqueda") {
-      console.log('📈 Auto-starting deep research for query:', query);
+    if (query && query.trim() !== "" && query !== "tu búsqueda") {
       startDeepResearch();
     }
-  }, [autoStart, query]);
+  }, [query]);
 
   // Función para manejar el progreso REAL de Trigger.dev
   const handleRealtimeProgress = ({ percentage, step, message }: { 
@@ -366,7 +364,7 @@ const NewsResearchLoading: React.FC<NewsResearchLoadingProps> = ({
           <p className="text-muted-foreground">
             {isActuallyLoading 
               ? "Ejecutando investigación profunda con IA..."
-              : "Listo para iniciar investigación"
+               : "Iniciando investigación..."
             }
           </p>
         </div>
@@ -504,18 +502,6 @@ const NewsResearchLoading: React.FC<NewsResearchLoadingProps> = ({
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Botón de inicio manual si no se ha iniciado automáticamente */}
-        {!isActuallyLoading && !isComplete && !autoStart && (
-          <div className="text-center">
-            <button
-              onClick={startDeepResearch}
-              className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-lg font-medium"
-            >
-              Iniciar Investigación
-            </button>
           </div>
         )}
 

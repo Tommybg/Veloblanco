@@ -61,7 +61,7 @@ export interface DeepResearchResponse {
 export interface ResearchResults {
   answer: string;
   sources: SearchResult[];
-  sourcesWithBias?: SearchResult[]; // Sources with BERT bias analysis
+  sourcesWithBias?: SearchResult[];
   neutralityScore: number;
   ideologicalDistribution: {
     left: number;
@@ -78,26 +78,23 @@ export interface ResearchResults {
       other: number;
     };
   };
-  // New parsed fields
+  
+  // Nuevos campos para perspectivas individuales desde Supabase
+  perspectiveLeftSummary?: string;
+  perspectiveLeftKeywords?: string[];
+  perspectiveCenterSummary?: string;
+  perspectiveCenterKeywords?: string[];
+  perspectiveRightSummary?: string;
+  perspectiveRightKeywords?: string[];
+  
+  // Campo parsedData existente
   parsedData?: {
     title: string;
     abstract: string;
     perspectives: {
-      left: {
-        title: string;
-        summary: string;
-        keywords: string[];
-      };
-      center: {
-        title: string;
-        summary: string;
-        keywords: string[];
-      };
-      right: {
-        title: string;
-        summary: string;
-        keywords: string[];
-      };
+      left: { title: string; summary: string; keywords: string[] };
+      center: { title: string; summary: string; keywords: string[] };
+      right: { title: string; summary: string; keywords: string[] };
     };
     parsedSources: Array<{
       name: string;

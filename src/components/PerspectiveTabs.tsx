@@ -34,6 +34,17 @@ const PerspectiveTabs = ({
 
   const currentPerspective = perspectives[selectedPerspective];
   
+  // DEBUG COMPLETO
+  console.log('🎯 PerspectiveTabs DEBUG COMPLETO:', {
+    receivedPerspectives: perspectives,
+    selectedPerspective,
+    hasOnPerspectiveChange: !!onPerspectiveChange,
+    perspectivesKeys: perspectives ? Object.keys(perspectives) : [],
+    leftData: perspectives?.left,
+    centerData: perspectives?.center,
+    rightData: perspectives?.right
+  });
+
   // Debug logging for perspective content
   console.log('🎯 PerspectiveTabs DEBUG:', {
     selectedPerspective,

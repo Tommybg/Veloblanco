@@ -7,20 +7,34 @@ import SourcesList from './SourcesList';
 import type { SearchResult, ResearchResults } from '@/types/research';
 import { parseDeepResearchResponse } from '@/utils/deepResearchParser';
 import { Markdown } from '@/components/ui/markdown';
+import { useNavigate } from 'react-router-dom';
+import { startResearchRun } from '@/api/deep-research';
+
 
 interface ResultsDashboardProps {
   query: string;
   onNewSearch: () => void;
   results: ResearchResults;
+  selectedPerspective?: 'left' | 'center' | 'right';
+  onPerspectiveChange?: (perspective: 'left' | 'center' | 'right') => void;
 }
 
 const ResultsDashboard = ({
   query,
   onNewSearch,
   results,
+  selectedPerspective: externalSelectedPerspective,
+  onPerspectiveChange: externalOnPerspectiveChange,
 }: ResultsDashboardProps) => {
-  const [selectedPerspective, setSelectedPerspective] = useState<'left' | 'center' | 'right'>('center');
+  // Usar props externas si están disponibles, sino usar estado interno
+  const [internalSelectedPerspective, setInternalSelectedPerspective] = useState<'left' | 'center' | 'right'>('center');
+  
+  const selectedPerspective = externalSelectedPerspective || internalSelectedPerspective;
+  const setSelectedPerspective = externalOnPerspectiveChange || setInternalSelectedPerspective;
+  
   const [searchQuery, setSearchQuery] = useState(query);
+  const navigate = useNavigate();
+
 
   // Parse the deep research response with error handling
   const parsedData = useMemo(() => {
@@ -94,10 +108,25 @@ const ResultsDashboard = ({
     }
   }, [results.answer, results.neutralityScore, results.ideologicalDistribution, results.sources, results.transparency, query]);
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (searchQuery.trim()) {
       console.log('New search:', searchQuery);
-      // Here you would trigger a new search with the updated query
+      
+      try {
+        // Iniciar nueva búsqueda
+        const started = await startResearchRun(searchQuery.trim());
+        
+        if (started.publicAccessToken) {
+          // Navegar a la página de loading
+          navigate('/research-loading', { 
+            state: { query: searchQuery.trim() } 
+          });
+        } else {
+          console.error('No public access token available');
+        }
+      } catch (error) {
+        console.error('Error starting new search:', error);
+      }
     }
   };
 
@@ -109,12 +138,18 @@ const ResultsDashboard = ({
 
   // Use parsed data for analysis, fallback to original data if needed
   const analysisData = {
-    summary: parsedData.perspectives?.center?.summary || parsedData.abstract || results.answer,
+    summary: results.answer || parsedData.perspectives?.center?.summary || parsedData.abstract || "Sin análisis disponible",
     neutralityScore: parsedData.neutralityScore || results.neutralityScore,
     sourcesCount: parsedData.sources.length || results.sources?.length || 0,
     lastUpdated: new Date().toISOString().slice(0, 10),
     distribution: parsedData.ideologicalDistribution || results.ideologicalDistribution,
   };
+
+  // Debug temporal
+  console.log('Analysis data:', {
+    resultsAnswer: results.answer,
+    finalSummary: analysisData.summary
+  });
 
   // Use parsed transparency data, fallback to original if needed
   const transparencyData = {
@@ -128,7 +163,97 @@ const ResultsDashboard = ({
     }
   };
 
+  // Construir las perspectivas desde los campos de la base de datos
+  const buildPerspectives = () => {
+    // Primero intentar usar los datos de Supabase
+    if (results.perspectiveLeftSummary || results.perspectiveCenterSummary || results.perspectiveRightSummary) {
+      return {
+        left: {
+          title: "Perspectiva Izquierda",
+          summary: results.perspectiveLeftSummary || "Sin análisis disponible",
+          keywords: results.perspectiveLeftKeywords || []
+        },
+        center: {
+          title: "Perspectiva Centro", 
+          summary: results.perspectiveCenterSummary || "Sin análisis disponible",
+          keywords: results.perspectiveCenterKeywords || []
+        },
+        right: {
+          title: "Perspectiva Derecha",
+          summary: results.perspectiveRightSummary || "Sin análisis disponible", 
+          keywords: results.perspectiveRightKeywords || []
+        }
+      };
+    }
+    
+    // Fallback a los datos parsedData si existen
+    if (parsedData.perspectives) {
+      return parsedData.perspectives;
+    }
+    
+    // Fallback por defecto
+    return {
+      left: {
+        title: "Perspectiva Izquierda",
+        summary: "Sin análisis disponible para la perspectiva izquierda",
+        keywords: []
+      },
+      center: {
+        title: "Perspectiva Centro",
+        summary: "Sin análisis disponible para la perspectiva centro", 
+        keywords: []
+      },
+      right: {
+        title: "Perspectiva Derecha",
+        summary: "Sin análisis disponible para la perspectiva derecha",
+        keywords: []
+      }
+    };
+  };
 
+  // Agregar esto antes del return para debug
+  console.log('🔍 ResultsDashboard DEBUG:', {
+    results: {
+      hasPerspectiveLeft: !!results.perspectiveLeftSummary,
+      hasPerspectiveCenter: !!results.perspectiveCenterSummary,
+      hasPerspectiveRight: !!results.perspectiveRightSummary,
+      perspectiveLeftPreview: results.perspectiveLeftSummary?.substring(0, 100),
+      perspectiveCenterPreview: results.perspectiveCenterSummary?.substring(0, 100),
+      perspectiveRightPreview: results.perspectiveRightSummary?.substring(0, 100)
+    },
+    buildPerspectivesResult: buildPerspectives()
+  });
+
+  // DEBUG COMPLETO - Agregar esto justo antes del return
+  console.log('🔍 DEBUG COMPLETO ResultsDashboard:', {
+    // Verificar que results tenga los campos de perspectivas
+    results: {
+      hasPerspectiveLeft: !!results.perspectiveLeftSummary,
+      hasPerspectiveCenter: !!results.perspectiveCenterSummary,
+      hasPerspectiveRight: !!results.perspectiveRightSummary,
+      perspectiveLeftPreview: results.perspectiveLeftSummary?.substring(0, 100),
+      perspectiveCenterPreview: results.perspectiveCenterSummary?.substring(0, 100),
+      perspectiveRightPreview: results.perspectiveRightSummary?.substring(0, 100)
+    },
+    
+    // Verificar que buildPerspectives funcione
+    buildPerspectivesResult: buildPerspectives(),
+    
+    // Verificar que parsedData tenga perspectivas
+    parsedData: {
+      hasPerspectives: !!parsedData.perspectives,
+      perspectivesKeys: parsedData.perspectives ? Object.keys(parsedData.perspectives) : [],
+      leftSummary: parsedData.perspectives?.left?.summary?.substring(0, 100),
+      centerSummary: parsedData.perspectives?.center?.summary?.substring(0, 100),
+      rightSummary: parsedData.perspectives?.right?.summary?.substring(0, 100)
+    },
+    
+    // Verificar que selectedPerspective esté definido
+    selectedPerspective,
+    
+    // Verificar que onPerspectiveChange esté definido
+    hasOnPerspectiveChange: !!externalOnPerspectiveChange
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-accent/30">
@@ -158,9 +283,10 @@ const ResultsDashboard = ({
             </div>
 
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-muted-foreground">
+              {/* Eliminar o comentar estas líneas: */}
+              {/* <span className="text-sm text-muted-foreground">
                 Analizando: <span className="font-semibold text-foreground">"{parsedData.title}"</span>
-              </span>
+              </span> */}
             </div>
           </div>
         </div>
@@ -226,7 +352,7 @@ const ResultsDashboard = ({
 
             {/* Vista comparativa 360° */}
             <PerspectiveTabs 
-              perspectives={parsedData.perspectives} 
+              perspectives={buildPerspectives()} 
               selectedPerspective={selectedPerspective} 
               onPerspectiveChange={setSelectedPerspective} 
             />

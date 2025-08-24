@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { startResearchRun } from '@/api/deep-research';
 
 interface SearchHeaderProps {
   onSearch?: (query: string) => void;
@@ -17,14 +18,20 @@ const SearchHeader = ({ onSearch }: SearchHeaderProps) => {
     if (searchQuery.trim()) {
       console.log('Searching for:', searchQuery);
       
-      // If onSearch callback is provided (for backward compatibility), call it
-      if (onSearch) {
-        onSearch(searchQuery.trim());
-      } else {
-        // Navigate to loading page with query
-        navigate('/research-loading', { 
-          state: { query: searchQuery.trim() } 
-        });
+      try {
+        // Iniciar la búsqueda automáticamente
+        const started = await startResearchRun(searchQuery.trim());
+        
+        if (started.publicAccessToken) {
+          // Navegar a la página de loading
+          navigate('/research-loading', { 
+            state: { query: searchQuery.trim() } 
+          });
+        } else {
+          console.error('No public access token available');
+        }
+      } catch (error) {
+        console.error('Error starting research:', error);
       }
     }
   };
@@ -38,14 +45,20 @@ const SearchHeader = ({ onSearch }: SearchHeaderProps) => {
   const handlePopularSearch = async (search: string) => {
     setSearchQuery(search);
     
-    // If onSearch callback is provided (for backward compatibility), call it
-    if (onSearch) {
-      onSearch(search);
-    } else {
-      // Navigate to loading page with popular search
-      navigate('/research-loading', { 
-        state: { query: search } 
-      });
+    try {
+      // Iniciar la búsqueda automáticamente
+      const started = await startResearchRun(search);
+      
+      if (started.publicAccessToken) {
+        // Navegar a la página de loading
+        navigate('/research-loading', { 
+          state: { query: search } 
+        });
+      } else {
+        console.error('No public access token available');
+      }
+    } catch (error) {
+      console.error('Error starting research:', error);
     }
   };
 

@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import ResultsDashboard from '@/components/ResultsDashboard';
 import type { ResearchResults } from '@/types/research';
 
+
 /**
  * Results Page - displays the research results dashboard
  * Gets results data from route state and renders the dashboard
@@ -12,7 +13,7 @@ const Results = () => {
   const results = location.state?.results;
   const query = location.state?.query ?? '';
 
-  // Redirect to home if no results provided
+  // Si no hay resultados en la ruta, redirigir al inicio
   if (!results) {
     console.warn('No results data found, redirecting to home');
     navigate('/');

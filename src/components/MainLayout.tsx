@@ -3,6 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Search, TrendingUp, Map, Building2, Rss } from 'lucide-react';
 import { NavBar } from '@/components/ui/tubelight-navbar';
+import GlobalSearchIndicator from './GlobalSearchIndicator';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -58,6 +59,9 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       <main className="w-full max-w-none mx-auto px-0 pt-24 pb-8">
         {children}
       </main>
+      
+      {/* Global Search Indicator */}
+      <GlobalSearchIndicator />
     </div>
   );
 };
