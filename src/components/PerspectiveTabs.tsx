@@ -1,4 +1,8 @@
 
+import React from 'react';
+import { cn } from '@/lib/utils';
+import { Markdown } from '@/components/ui/markdown';
+
 interface Perspective {
   title: string;
   summary: string;
@@ -14,6 +18,8 @@ interface PerspectiveTabsProps {
   selectedPerspective: 'left' | 'center' | 'right';
   onPerspectiveChange: (perspective: 'left' | 'center' | 'right') => void;
 }
+
+
 
 const PerspectiveTabs = ({ 
   perspectives, 
@@ -79,9 +85,13 @@ const PerspectiveTabs = ({
               {currentPerspective.title}
             </h4>
             
-            <p className="text-foreground leading-relaxed mb-6">
-              {currentPerspective.summary}
-            </p>
+            {/* Renderizado de markdown mejorado */}
+            <div className="text-foreground leading-relaxed mb-6">
+              <Markdown 
+                content={currentPerspective.summary} 
+                className="prose prose-sm max-w-none"
+              />
+            </div>
           </>
         ) : (
           <div className="text-center py-8">

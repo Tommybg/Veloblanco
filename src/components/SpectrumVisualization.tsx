@@ -7,6 +7,12 @@ interface ParsedSource {
   category: string;
   stance?: string;
   rating?: number;
+  biasClassification?: {
+    fusedResult: {
+      category: string;
+      visualPosition: number;
+    };
+  };
 }
 
 interface SpectrumVisualizationProps {
@@ -27,26 +33,26 @@ const SpectrumVisualization = ({ distribution, neutralityScore, sources }: Spect
     let position = 50; // Default center
     let bias = 'center';
     
-    // Map category to position
-    switch (source.category.toLowerCase()) {
-      case 'left':
-        // Distribute left sources between 15-35%
-        position = 15 + ((index % 5) * 4); // 15, 19, 23, 27, 31, 35, etc.
-        bias = 'left';
-        break;
-      case 'center':
-        // Distribute center sources between 40-60%
-        position = 40 + ((index % 6) * 3.33); // 40, 43.33, 46.66, 50, 53.33, 56.66, 60
-        bias = 'center';
-        break;
-      case 'right':
-        // Distribute right sources between 65-85%
-        position = 65 + ((index % 5) * 4); // 65, 69, 73, 77, 81, 85, etc.
-        bias = 'right';
-        break;
-      default:
-        position = 50;
-        bias = 'center';
+    // Use biasClassification visualPosition if available
+    if (source.biasClassification?.fusedResult) {
+      position = source.biasClassification.fusedResult.visualPosition || 50;
+      bias = source.biasClassification.fusedResult.category;
+    } else {
+      // Fallback to category mapping
+      switch (source.category.toLowerCase()) {
+        case 'left':
+          position = 15 + ((index % 5) * 4);
+          bias = 'left';
+          break;
+        case 'center':
+          position = 40 + ((index % 6) * 3.33);
+          bias = 'center';
+          break;
+        case 'right':
+          position = 65 + ((index % 5) * 4);
+          bias = 'right';
+          break;
+      }
     }
     
     return {
@@ -130,7 +136,7 @@ const SpectrumVisualization = ({ distribution, neutralityScore, sources }: Spect
 
       {/* Visualización del espectro */}
       <div className="relative">
-        <div className="spectrum-bar mb-4">
+        <div className="spectrum-bar spectrum-gradient mb-4">
           {mappedSources.map((source) => (
             <div
               key={source.id}

@@ -28,10 +28,27 @@ export const search = schemaTask({
   run: async ({ query }, { ctx }) => {
     logger.log("Searching", { query });
 
+    // Modificar la consulta para priorizar fuentes en español
+    const spanishPriorityQuery = query.includes('español') || 
+                                query.includes('Colombia') || 
+                                query.includes('Latinoamérica') ||
+                                query.includes('Spanish')
+      ? query
+      : `${query} español Colombia Latinoamérica`;
+
     const tavilyClient = getTavilyClient();
-    const searchResults = await tavilyClient.search(query, {
+    const searchResults = await tavilyClient.search(spanishPriorityQuery, {
       searchDepth: "basic",
       includeFavicon: true,
+      // Priorizar fuentes en español
+      region: "CO", // Colombia
+      language: "es", // Español
+      // Incluir dominios de medios colombianos y latinoamericanos
+      includeDomains: [
+        "eltiempo.com", "semana.com", "elespectador.com", "larepublica.co",
+        "bbc.com/mundo", "cnnespanol.cnn.com", "dw.com/es", "france24.com/es",
+        "infobae.com", "clarin.com", "lanacion.com.ar", "eluniverso.com"
+      ]
     });
 
     const summaryResults = await batch.triggerByTaskAndWait<

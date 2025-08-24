@@ -112,35 +112,63 @@ export function parseDeepResearchResponse(answer: string): ParsedDeepResearch {
       };
     }
 
-    // Extract sources from references section
-    const referencesMatch = answer.match(/### References?\s*\n+([\s\S]*?)(?=\n---|$)/i);
+    // Cambiar la línea 115 para buscar múltiples formatos de referencias
+    // Extract sources from references section - multiple patterns
+    let referencesMatch = answer.match(/### References?\s*\n+([\s\S]*?)(?=\n---|$)/i);
+    if (!referencesMatch) {
+      // Try alternative patterns
+      referencesMatch = answer.match(/## References?\s*\n+([\s\S]*?)(?=\n## |$)/i);
+    }
+    if (!referencesMatch) {
+      referencesMatch = answer.match(/Referencias?\s*\n+([\s\S]*?)(?=\n## |$)/i);
+    }
+    if (!referencesMatch) {
+      // Last resort: look for numbered list that looks like references
+      referencesMatch = answer.match(/(\d+\.\s*\[[^\]]+\]\([^)]+\)[^\n]*\n?)+/);
+    }
+
     if (referencesMatch) {
       const referencesText = referencesMatch[1];
+      console.log('🔍 Found references section:', referencesText.substring(0, 200) + '...');
+      
       const sourceLines = referencesText.split('\n').filter(line => line.trim());
+      console.log(' Source lines found:', sourceLines.length);
       
       defaultResult.sources = sourceLines.map((line, index) => {
+        console.log(` Processing line ${index + 1}:`, line);
+        
         // Extract URL from markdown link
         const urlMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
         if (urlMatch) {
           const name = urlMatch[1].trim();
           const url = urlMatch[2].trim();
           
-          // Try to extract category from the line
-          let category = "Other";
-          if (line.includes("– Center")) category = "Center";
-          else if (line.includes("– Left")) category = "Left";
-          else if (line.includes("– Right")) category = "Right";
+          // Try to extract category from the line - multiple patterns
+          let category = "Center"; // Default to center
+          if (line.includes("– Center") || line.includes("- Center") || line.includes("Center")) category = "Center";
+          else if (line.includes("– Left") || line.includes("- Left") || line.includes("Left")) category = "Left";
+          else if (line.includes("– Right") || line.includes("- Right") || line.includes("Right")) category = "Right";
+          else if (line.includes("Progresista") || line.includes("Progressive")) category = "Left";
+          else if (line.includes("Conservador") || line.includes("Conservative")) category = "Right";
+          else if (line.includes("Neutral")) category = "Center";
           
+          console.log(`✅ Extracted source: ${name} (${category})`);
           return { name, url, category };
         }
         
         // Fallback for lines without markdown links
+        const fallbackName = line.trim() || `Source ${index + 1}`;
+        console.log(`⚠️ Using fallback for line ${index + 1}: ${fallbackName}`);
         return {
-          name: line.trim() || `Source ${index + 1}`,
+          name: fallbackName,
           url: "#",
-          category: "Other"
+          category: "Center"
         };
       });
+      
+      console.log(`🎯 Total sources parsed: ${defaultResult.sources.length}`);
+    } else {
+      console.log('❌ No references section found with any pattern');
     }
 
     // Extract 360° Comparative Analysis - multiple pattern matching approaches
@@ -159,7 +187,11 @@ export function parseDeepResearchResponse(answer: string): ParsedDeepResearch {
         /Left:\s*([\s\S]*?)(?=Center:|Right:|\n\n## |$)/i,
         /Progresista:\s*([\s\S]*?)(?=Neutral:|Conservador:|\n\n## |$)/i,
         /Progressive:\s*([\s\S]*?)(?=Neutral:|Conservative:|\n\n## |$)/i,
-        /Izquierda:\s*([\s\S]*?)(?=Centro:|Derecha:|\n\n## |$)/i
+        /Izquierda:\s*([\s\S]*?)(?=Centro:|Derecha:|\n\n## |$)/i,
+        // Add more flexible patterns
+        /(?:perspectiva\s+)?(?:izquierda|left|progresista|progressive)[\s:]*\n?([\s\S]*?)(?=(?:perspectiva\s+)?(?:centro|derecha|center|right|neutral|conservador)|\n\n|$)/i,
+        /\*\*Izquierda\*\*:\s*([\s\S]*?)(?=\*\*Centro\*\*|\*\*Derecha\*\*|\n\n## |$)/i,
+        /\*\*Progresista\*\*:\s*([\s\S]*?)(?=\*\*Neutral\*\*|\*\*Conservador\*\*|\n\n## |$)/i
       ];
       
       for (const pattern of leftPatterns) {
@@ -312,7 +344,11 @@ export function parseDeepResearchResponse(answer: string): ParsedDeepResearch {
         /Right:\s*([\s\S]*?)(?=Left:|Center:|\n\n## |$)/i,
         /Conservador:\s*([\s\S]*?)(?=Progresista:|Neutral:|\n\n## |$)/i,
         /Conservative:\s*([\s\S]*?)(?=Progressive:|Neutral:|\n\n## |$)/i,
-        /Derecha:\s*([\s\S]*?)(?=Izquierda:|Centro:|\n\n## |$)/i
+        /Derecha:\s*([\s\S]*?)(?=Izquierda:|Centro:|\n\n## |$)/i,
+        // Add more flexible patterns
+        /(?:perspectiva\s+)?(?:derecha|right|conservador|conservative)[\s:]*\n?([\s\S]*?)(?=(?:perspectiva\s+)?(?:izquierda|centro|left|center|progresista|neutral)|\n\n|$)/i,
+        /\*\*Derecha\*\*:\s*([\s\S]*?)(?=\*\*Izquierda\*\*|\*\*Centro\*\*|\n\n## |$)/i,
+        /\*\*Conservador\*\*:\s*([\s\S]*?)(?=\*\*Progresista\*\*|\*\*Neutral\*\*|\n\n## |$)/i
       ];
       
       for (const pattern of rightPatterns) {

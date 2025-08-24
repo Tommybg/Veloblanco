@@ -6,6 +6,7 @@ import PerspectiveTabs from './PerspectiveTabs';
 import SourcesList from './SourcesList';
 import type { SearchResult, ResearchResults } from '@/types/research';
 import { parseDeepResearchResponse } from '@/utils/deepResearchParser';
+import { Markdown } from '@/components/ui/markdown';
 
 interface ResultsDashboardProps {
   query: string;
@@ -33,6 +34,14 @@ const ResultsDashboard = ({
           url: s.url,
           category: s.biasClassification ? s.biasClassification.fusedResult.category : 'center',
           rating: 4.0
+        }));
+      } else if ((!parsed.sources || parsed.sources.length === 0) && Array.isArray(results.sources) && results.sources.length > 0) {
+        // Fallback: map plain search results when references parsing didn't yield sources
+        parsed.sources = results.sources.map((s, index) => ({
+          name: s.title || new URL(s.url).hostname.replace('www.', ''),
+          url: s.url,
+          category: 'center',
+          rating: 4.0,
         }));
       }
       
@@ -119,6 +128,8 @@ const ResultsDashboard = ({
     }
   };
 
+
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-accent/30">
       {/* Header compacto */}
@@ -183,9 +194,9 @@ const ResultsDashboard = ({
                 </div>
               </div>
               
-              <div className="text-foreground leading-relaxed mb-6 whitespace-pre-wrap">
-                {analysisData.summary}
-              </div>
+                              <div className="text-foreground leading-relaxed mb-6">
+                  <Markdown content={analysisData.summary} />
+                </div>
 
               <div className="bg-white/50 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -224,17 +235,16 @@ const ResultsDashboard = ({
           {/* Sidebar con fuentes */}
           <div className="space-y-6">
             {/* Debug: Log data being passed to SourcesList */}
-            {console.log('ResultsDashboard data:', {
-              parsedSources: parsedData.sources?.length || 0,
-              sourcesWithBias: results.sourcesWithBias?.length || 0,
-              sourcesWithBiasData: results.sourcesWithBias
-            })}
-            <SourcesList 
-              sources={parsedData.sources} 
-              searchResults={results.sourcesWithBias || undefined}
-            />
+            {(() => {
+              console.log('ResultsDashboard data:', {
+                parsedSources: parsedData.sources?.length || 0,
+                sourcesWithBias: results.sourcesWithBias?.length || 0,
+                sourcesWithBiasData: results.sourcesWithBias
+              });
+              return null;
+            })()}
             
-            {/* Panel de transparencia */}
+            {/* Panel de transparencia - MOVIDO ARRIBA */}
             <div className="source-card">
               <div className="flex items-center mb-4">
                 <Shield className="w-5 h-5 text-primary mr-2" />
@@ -267,6 +277,12 @@ const ResultsDashboard = ({
                 </div>
               </div>
             </div>
+            
+            {/* Fuentes - MOVIDO ABAJO */}
+            <SourcesList 
+              sources={parsedData.sources} 
+              searchResults={results.sourcesWithBias || undefined}
+            />
           </div>
         </div>
       </div>

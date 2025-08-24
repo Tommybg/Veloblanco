@@ -15,12 +15,23 @@ export const generateResearchQueries = schemaTask({
   run: async ({ originalQuery, clarification }) => {
     logger.log("Generating research queries", { originalQuery, clarification });
 
+    // Asegurar que la consulta incluya contexto español
+    const spanishContextQuery = originalQuery.includes('español') || 
+                                originalQuery.includes('Colombia') || 
+                                originalQuery.includes('Latinoamérica')
+      ? originalQuery
+      : `${originalQuery} Colombia Latinoamérica español`;
+
     const planningResponse = await generateText({
       model: openai("gpt-4.1"),
       system: PLANNING_PROMPT,
       prompt: `
-      Original Query: ${originalQuery}
-      Clarification: ${clarification || "None"}
+      Consulta Original: ${spanishContextQuery}
+      Aclaración: ${clarification || "Ninguna"}
+      
+      **IMPORTANTE**: Genera consultas de búsqueda que prioricen fuentes en español, 
+      especialmente medios colombianos y latinoamericanos. Incluye términos como 
+      "Colombia", "español", "Latinoamérica" cuando sea relevante.
       `.trim(),
     });
 
@@ -37,6 +48,10 @@ export const generateResearchQueries = schemaTask({
       schema: z.object({
         queries: z.array(z.string()),
       }),
+    });
+
+    logger.log("Generated Spanish-priority queries", {
+      queries: planParsingResponse.object.queries,
     });
 
     return {
