@@ -100,7 +100,7 @@ const ResultsDashboard = ({
 
   // Use parsed data for analysis, fallback to original data if needed
   const analysisData = {
-    summary: parsedData.abstract || results.answer,
+    summary: parsedData.perspectives?.center?.summary || parsedData.abstract || results.answer,
     neutralityScore: parsedData.neutralityScore || results.neutralityScore,
     sourcesCount: parsedData.sources.length || results.sources?.length || 0,
     lastUpdated: new Date().toISOString().slice(0, 10),
@@ -109,13 +109,13 @@ const ResultsDashboard = ({
 
   // Use parsed transparency data, fallback to original if needed
   const transparencyData = {
-    sourcesProcessed: parsedData.transparency.sourcesProcessed || results.transparency.sourcesProcessed,
-    analysisTime: parsedData.transparency.analysisTime || results.transparency.analysisTime,
+    sourcesProcessed: parsedData.transparency?.sourcesProcessed || results.transparency?.sourcesProcessed || 0,
+    analysisTime: parsedData.transparency?.analysisTime || results.transparency?.analysisTime || 0,
     sourceBreakdown: {
-      newsOutlets: parsedData.transparency.sourceBreakdown.newsOutlets || results.transparency.sourceBreakdown.newsOutlets,
-      academic: parsedData.transparency.sourceBreakdown.academic || results.transparency.sourceBreakdown.academic,
-      government: parsedData.transparency.sourceBreakdown.government || results.transparency.sourceBreakdown.government,
-      other: parsedData.transparency.sourceBreakdown.other || results.transparency.sourceBreakdown.other,
+      newsOutlets: parsedData.transparency?.sourceBreakdown?.newsOutlets || results.transparency?.sourceBreakdown?.newsOutlets || 0,
+      academic: parsedData.transparency?.sourceBreakdown?.academic || results.transparency?.sourceBreakdown?.academic || 0,
+      government: parsedData.transparency?.sourceBreakdown?.government || results.transparency?.sourceBreakdown?.government || 0,
+      other: parsedData.transparency?.sourceBreakdown?.other || results.transparency?.sourceBreakdown?.other || 0,
     }
   };
 

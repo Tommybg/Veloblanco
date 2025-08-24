@@ -27,6 +27,22 @@ const PerspectiveTabs = ({
   ];
 
   const currentPerspective = perspectives[selectedPerspective];
+  
+  // Debug logging for perspective content
+  console.log('🎯 PerspectiveTabs DEBUG:', {
+    selectedPerspective,
+    currentPerspective: currentPerspective ? {
+      title: currentPerspective.title,
+      summaryLength: currentPerspective.summary?.length || 0,
+      summaryPreview: currentPerspective.summary?.substring(0, 100) + '...',
+      hasKeywords: !!currentPerspective.keywords?.length
+    } : 'NULL',
+    allPerspectives: {
+      left: perspectives.left ? `${perspectives.left.summary?.length || 0} chars` : 'NULL',
+      center: perspectives.center ? `${perspectives.center.summary?.length || 0} chars` : 'NULL',
+      right: perspectives.right ? `${perspectives.right.summary?.length || 0} chars` : 'NULL'
+    }
+  });
 
   return (
     <div className="source-card animate-fade-in">

@@ -40,4 +40,50 @@ export async function healthCheck(): Promise<boolean> {
   }
 }
 
+// Start a research run and return the runId for tracking
+export async function startResearchRun(query: string): Promise<{ 
+  runId: string; 
+  publicAccessToken?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/api/deep-research/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query }),
+  });
+  
+  if (!response.ok) {
+    let msg = `Failed to start research run: ${response.status}`;
+    try {
+      const data = await response.json();
+      if (data?.error) msg += ` - ${data.error}`;
+    } catch {}
+    throw new Error(msg);
+  }
+  
+  return await response.json();
+}
+
+// Fetch the result of a research run by runId
+export async function fetchDeepResearchResult(runId: string): Promise<{
+  status: 'completed' | 'running' | 'FAILED';
+  data?: DeepResearchResponse;
+  error?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/api/deep-research/result/${runId}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+  
+  if (!response.ok) {
+    let msg = `Failed to fetch research result: ${response.status}`;
+    try {
+      const data = await response.json();
+      if (data?.error) msg += ` - ${data.error}`;
+    } catch {}
+    throw new Error(msg);
+  }
+  
+  return await response.json();
+}
+
 

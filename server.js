@@ -114,6 +114,83 @@ app.post('/api/deep-research', async (req, res) => {
   }
 });
 
+// Start a deep research run and return tracking info
+app.post('/api/deep-research/start', async (req, res) => {
+  try {
+    const { query } = req.body;
+    
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid request: query is required'
+      });
+    }
+    
+    console.log('Server: Starting research run for:', query);
+    
+    // Trigger the actual Trigger.dev workflow
+    const handle = await deepResearch.trigger({
+      originalQuery: query,
+    });
+    
+    // For now, return just the runId without public access token
+    // Real-time updates will be handled through polling
+    res.json({
+      runId: handle.id,
+      publicAccessToken: null // Will use polling instead
+    });
+  } catch (error) {
+    console.error('Server: Error starting research run:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to start research run'
+    });
+  }
+});
+
+// Get the result of a deep research run
+app.get('/api/deep-research/result/:runId', async (req, res) => {
+  try {
+    const { runId } = req.params;
+    
+    if (!runId) {
+      return res.status(400).json({
+        error: 'runId is required'
+      });
+    }
+    
+    console.log('Server: Checking result for run:', runId);
+    
+    const runResult = await runs.retrieve(runId);
+    
+    if (!runResult) {
+      return res.status(404).json({
+        error: 'Run not found'
+      });
+    }
+    
+    // Return status based on run state
+    if (runResult.status === 'COMPLETED') {
+      return res.json({
+        status: 'completed',
+        data: runResult.output
+      });
+    } else if (runResult.status === 'FAILED') {
+      return res.json({
+        status: 'FAILED',
+        error: runResult.error || 'Run failed'
+      });
+    } else {
+      return res.json({
+        status: 'running'
+      });
+    }
+  } catch (error) {
+    console.error('Server: Error fetching run result:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to fetch run result'
+    });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

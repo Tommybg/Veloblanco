@@ -148,7 +148,11 @@ const NewsResearchLoading: React.FC<NewsResearchLoadingProps> = ({
       // Start the run to get a runId for realtime hooks
       const started = await startResearchRun(String(query));
       setRunId(started.runId);
-      if (started.publicAccessToken) setPublicToken(started.publicAccessToken);
+      if (started.publicAccessToken) {
+        setPublicToken(started.publicAccessToken);
+      } else {
+        console.log('No public access token available, using polling only');
+      }
       
       // Fallback: if no realtime run yet, start simulated progress until first hook tick
       stopProgressTracking = startProgressTracking();
