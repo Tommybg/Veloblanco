@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => ({
   build: {
     // Increase chunk size warning limit
     chunkSizeWarningLimit: 1000,
+    // DISABLE MINIFICATION COMPLETELY
+    minify: false,
     rollupOptions: {
       output: {
         // Manual chunk splitting for better optimization
@@ -92,16 +94,9 @@ export default defineConfig(({ mode }) => ({
         assetFileNames: 'assets/[name]-[hash].[ext]',
       },
     },
-    // Enable source maps for debugging (optional)
-    sourcemap: false,
-    // Minify and optimize
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: mode === 'production',
-        drop_debugger: true,
-      },
-    },
+    // Enable source maps for debugging
+    sourcemap: true,
+    // Remove all terser-related options
   },
   // Optimize dependencies
   optimizeDeps: {
