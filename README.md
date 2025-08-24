@@ -1,5 +1,7 @@
 # 🚀 Veloblanco - Análisis de Noticias con IA
 
+[![Veloblanco Demo](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=VIDEO_ID)
+
 ## 🎯 **Objetivo del Producto**
 
 Veloblanco es una plataforma de análisis de noticias que utiliza inteligencia artificial para proporcionar análisis imparciales y multi-perspectiva de temas de actualidad. Nuestro objetivo es combatir la desinformación y los sesgos mediáticos ofreciendo a los usuarios una visión 360° de las noticias, clasificando fuentes por su posición ideológica y generando análisis neutrales basados en múltiples perspectivas.
