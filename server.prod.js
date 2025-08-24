@@ -25,9 +25,13 @@ app.use(express.json());
 // Serve static files from React build
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// API Routes (simplified for production)
+// Simple health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    message: 'Veloblanco API is running'
+  });
 });
 
 // Catch-all route to serve React app
